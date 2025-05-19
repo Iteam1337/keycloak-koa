@@ -56,15 +56,26 @@ const auth = keycloak({
 // 2. Login endpoint - redirect users to Keycloak
 app.get('/login', (req, res) => {
   const redirectUri = `${req.protocol}://${req.get('host')}/auth/callback`;
-  const keycloakLoginUrl = `${auth.keycloakUrl}/protocol/openid-connect/auth?client_id=${auth.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid`;
   
-  res.redirect(keycloakLoginUrl);
+  // Generate a random state for CSRF protection
+  const state = auth.generateRandomState();
+  req.session.authState = state; // Store in session
+  
+  // Use the helper to generate the auth URL
+  const authUrl = auth.getAuthUrl(redirectUri, { state });
+  res.redirect(authUrl);
 });
 
 // 3. Callback endpoint - handle the code from Keycloak
 app.get('/auth/callback', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
+    
+    // Verify state parameter to prevent CSRF attacks
+    if (state !== req.session.authState) {
+      return res.redirect('/login?error=invalid_state');
+    }
+    
     const redirectUri = `${req.protocol}://${req.get('host')}/auth/callback`;
     
     // Exchange code for tokens and set cookies
@@ -90,11 +101,11 @@ app.get('/api/profile', auth.middleware.extractJwtToken, (req, res) => {
 app.get('/logout', (req, res) => {
   auth.logout(res);
   
-  // Optional: redirect to Keycloak logout
+  // Use the helper to generate the logout URL
   const redirectUri = `${req.protocol}://${req.get('host')}`;
-  const keycloakLogoutUrl = `${auth.keycloakUrl}/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const logoutUrl = auth.getLogoutUrl(redirectUri);
   
-  res.redirect(keycloakLogoutUrl);
+  res.redirect(logoutUrl);
 });
 
 app.listen(3000, () => {
@@ -117,6 +128,54 @@ Initializes the Keycloak integration with your configuration.
 - `middleware.extractJwtToken`: Middleware to protect routes
 - `handleTokenExchange(code, redirectUri, res)`: Helper to exchange code for tokens
 - `logout(res)`: Helper to clear auth cookies
+- `getAuthUrl(redirectUri, options)`: Helper to generate Keycloak authorization URL
+- `getLogoutUrl(redirectUri, options)`: Helper to generate Keycloak logout URL
+- `generateRandomState(length)`: Helper to generate random state for CSRF protection
+
+### URL Helper Functions
+
+These functions are also available directly from the module:
+
+#### getAuthUrl(options)
+
+Generates a Keycloak authorization URL.
+
+```javascript
+const { getAuthUrl } = require('keycloak-koa');
+
+const authUrl = getAuthUrl({
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
+  redirectUri: 'https://myapp.com/callback',
+  scope: 'openid profile email',
+  state: 'random-state-string',
+  prompt: 'login' // Force login even if already authenticated
+});
+```
+
+#### getLogoutUrl(options)
+
+Generates a Keycloak logout URL.
+
+```javascript
+const { getLogoutUrl } = require('keycloak-koa');
+
+const logoutUrl = getLogoutUrl({
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  redirectUri: 'https://myapp.com/logged-out',
+  idTokenHint: 'optional-id-token'
+});
+```
+
+#### generateRandomState(length)
+
+Generates a random string for CSRF protection.
+
+```javascript
+const { generateRandomState } = require('keycloak-koa');
+
+const state = generateRandomState(32); // Default length is 32
+```
 
 ## Security Features
 

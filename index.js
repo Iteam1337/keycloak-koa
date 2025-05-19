@@ -1,6 +1,7 @@
 const TokenService = require('./lib/tokenService');
 const JwksService = require('./lib/jwksService');
 const { extractJwtToken } = require('./lib/middleware');
+const { getAuthUrl, getLogoutUrl, generateRandomState } = require('./lib/urlHelpers');
 
 /**
  * Initialize Keycloak integration for Express/Koa
@@ -34,6 +35,10 @@ function initKeycloak(options) {
     tokenService,
     jwksService,
 
+    // Configuration
+    keycloakUrl,
+    clientId,
+
     // Middleware
     middleware: {
       extractJwtToken: extractJwtToken(jwksService),
@@ -49,8 +54,28 @@ function initKeycloak(options) {
 
     logout: (res) => {
       tokenService.clearAuthCookies(res);
-    }
+    },
+
+    // URL helper methods
+    getAuthUrl: (redirectUri, options = {}) => getAuthUrl({
+      keycloakUrl,
+      clientId,
+      redirectUri,
+      ...options
+    }),
+
+    getLogoutUrl: (redirectUri, options = {}) => getLogoutUrl({
+      keycloakUrl,
+      redirectUri,
+      ...options
+    }),
+
+    generateRandomState
   };
 }
 
+// Export the main function and URL helpers for direct use
 module.exports = initKeycloak;
+module.exports.getAuthUrl = getAuthUrl;
+module.exports.getLogoutUrl = getLogoutUrl;
+module.exports.generateRandomState = generateRandomState;
