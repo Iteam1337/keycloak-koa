@@ -2,7 +2,9 @@ const TokenService = require('../lib/tokenService');
 const axios = require('axios');
 const jose = require('jose');
 
+// Mock axios properly
 jest.mock('axios');
+axios.post = jest.fn();
 
 describe('TokenService', () => {
   const mockKeycloakUrl = 'https://auth.example.com/realms/test-realm';
