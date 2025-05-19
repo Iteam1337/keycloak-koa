@@ -1,6 +1,6 @@
 # keycloak-koa
 
-A simple, secure Keycloak authentication library for Express and Koa applications.
+A simple, secure Keycloak authentication library for Express and Koa applications with TypeScript support.
 
 ## Installation
 
@@ -10,10 +10,12 @@ npm install keycloak-koa cookie-parser
 
 ## Quick Start
 
-```javascript
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const keycloak = require('keycloak-koa');
+### Express
+
+```typescript
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import keycloak from 'keycloak-koa';
 
 const app = express();
 app.use(cookieParser());
@@ -33,18 +35,55 @@ app.get('/api/profile', auth.middleware.extractJwtToken, (req, res) => {
 app.listen(3000);
 ```
 
+### Koa
+
+```typescript
+import Koa from 'koa';
+import Router from 'koa-router';
+import koaCookie from 'koa-cookie';
+import keycloak from 'keycloak-koa';
+
+const app = new Koa();
+app.use(koaCookie());
+
+const router = new Router();
+
+// Initialize Keycloak
+const auth = keycloak({
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET
+});
+
+// Protect routes
+router.get('/api/profile', auth.middleware.extractJwtToken, async (ctx) => {
+  ctx.body = { user: ctx.state.user };
+});
+
+app.use(router.routes());
+app.listen(3000);
+```
+
 ## Complete Example
 
 Here's a complete example showing all the endpoints you'll need:
 
-```javascript
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const keycloak = require('keycloak-koa');
+### Express Example
+
+```typescript
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import keycloak from 'keycloak-koa';
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: true
+}));
 
 // 1. Initialize Keycloak
 const auth = keycloak({
@@ -79,7 +118,7 @@ app.get('/auth/callback', async (req, res) => {
     const redirectUri = `${req.protocol}://${req.get('host')}/auth/callback`;
     
     // Exchange code for tokens and set cookies
-    const { user } = await auth.handleTokenExchange(code, redirectUri, res);
+    const { user } = await auth.handleTokenExchange(code as string, redirectUri, res);
     
     // Redirect to the application
     res.redirect('/dashboard');
@@ -107,6 +146,95 @@ app.get('/logout', (req, res) => {
   
   res.redirect(logoutUrl);
 });
+
+app.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});
+```
+
+### Koa Example
+
+```typescript
+import Koa from 'koa';
+import Router from 'koa-router';
+import koaBody from 'koa-body';
+import koaCookie from 'koa-cookie';
+import session from 'koa-session';
+import keycloak from 'keycloak-koa';
+
+const app = new Koa();
+app.keys = ['your-secret-key'];
+
+app.use(koaBody());
+app.use(koaCookie());
+app.use(session(app));
+
+const router = new Router();
+
+// 1. Initialize Keycloak
+const auth = keycloak({
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET
+});
+
+// 2. Login endpoint - redirect users to Keycloak
+router.get('/login', async (ctx) => {
+  const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`;
+  
+  // Generate a random state for CSRF protection
+  const state = auth.generateRandomState();
+  ctx.session.authState = state; // Store in session
+  
+  // Use the helper to generate the auth URL
+  const authUrl = auth.getAuthUrl(redirectUri, { state });
+  ctx.redirect(authUrl);
+});
+
+// 3. Callback endpoint - handle the code from Keycloak
+router.get('/auth/callback', async (ctx) => {
+  try {
+    const { code, state } = ctx.query;
+    
+    // Verify state parameter to prevent CSRF attacks
+    if (state !== ctx.session.authState) {
+      return ctx.redirect('/login?error=invalid_state');
+    }
+    
+    const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`;
+    
+    // Exchange code for tokens and set cookies
+    const { user } = await auth.handleTokenExchange(code as string, redirectUri, ctx);
+    
+    // Redirect to the application
+    ctx.redirect('/dashboard');
+  } catch (error) {
+    console.error('Authentication error:', error);
+    ctx.redirect('/login?error=auth_failed');
+  }
+});
+
+// 4. Protected API routes
+router.get('/api/profile', auth.middleware.extractJwtToken, async (ctx) => {
+  ctx.body = { 
+    user: ctx.state.user,
+    message: 'This is a protected endpoint' 
+  };
+});
+
+// 5. Logout endpoint
+router.get('/logout', async (ctx) => {
+  auth.logout(ctx);
+  
+  // Use the helper to generate the logout URL
+  const redirectUri = `${ctx.protocol}://${ctx.host}`;
+  const logoutUrl = auth.getLogoutUrl(redirectUri);
+  
+  ctx.redirect(logoutUrl);
+});
+
+app.use(router.routes());
+app.use(router.allowedMethods());
 
 app.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
