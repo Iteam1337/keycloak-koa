@@ -87,7 +87,7 @@ export const extractJwtToken = (jwksService: JwksService) => async (ctx: any, ne
         ctx.body = { error: 'Authentication failed' };
       } else {
         // Express
-        res.status(401).json({ error: 'Authentication failed' });
+        ctx.status(401).json({ error: 'Authentication failed' });
       }
     }
   } catch (error) {
@@ -97,8 +97,8 @@ export const extractJwtToken = (jwksService: JwksService) => async (ctx: any, ne
       ctx.status = 401;
       ctx.body = { error: 'Authentication failed' };
     } else {
-      // Express
-      res.status(401).json({ error: 'Authentication failed' });
+      // Express - use the ctx variable which is req in Express context
+      ctx.status(401).json({ error: 'Authentication failed' });
     }
   }
 };

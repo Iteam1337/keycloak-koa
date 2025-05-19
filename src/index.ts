@@ -72,6 +72,6 @@ function initKeycloak(options: KeycloakOptions): KeycloakInstance {
   };
 }
 
-// Export the main function and URL helpers for direct use
-export = initKeycloak;
+// Export the main function as default and URL helpers as named exports
+export default initKeycloak;
 export { getAuthUrl, getLogoutUrl, generateRandomState };
