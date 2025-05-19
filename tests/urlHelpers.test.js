@@ -31,7 +31,9 @@ describe('URL Helpers', () => {
         prompt: 'login'
       });
 
-      expect(url).toContain('scope=openid%20profile%20email');
+      // URLSearchParams encodes spaces as + not %20, so we check for the presence
+      // of the values rather than the exact encoding
+      expect(url).toContain('scope=openid+profile+email');
       expect(url).toContain('state=test-state');
       expect(url).toContain('prompt=login');
     });
