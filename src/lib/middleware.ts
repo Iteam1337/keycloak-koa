@@ -27,14 +27,14 @@ function isExpressRequest(obj: unknown): obj is ExpressRequestWithUser {
 // Middleware to extract and verify JWT from cookies
 export const extractJwtToken =
   (jwksService: JwksService) =>
-  async (arg1: unknown, arg2: unknown, arg3?: unknown) => {
+  async (arg1: unknown, arg2?: unknown, arg3?: unknown) => {
     if (isKoaContext(arg1)) {
-      return koaMiddleware(jwksService)(arg1, arg2 as KoaNext);
+      return koaMiddleware(jwksService)(arg1, arg2 as KoaNext | undefined);
     } else if (isExpressRequest(arg1)) {
       return expressMiddleware(jwksService)(
         arg1,
         arg2 as ExpressResponse,
-        arg3 as ExpressNext
+        arg3 as ExpressNext | undefined
       );
     }
 
@@ -42,7 +42,7 @@ export const extractJwtToken =
   };
 
 const koaMiddleware =
-  (jwksService: JwksService) => async (ctx: KoaContext, next: KoaNext) => {
+  (jwksService: JwksService) => async (ctx: KoaContext, next?: KoaNext) => {
     try {
       // First check for token in cookie
       const token = ctx.cookies.get("auth_token");
@@ -87,7 +87,7 @@ const koaMiddleware =
           });
         }
 
-        await next();
+        await next?.();
       } catch (tokenError) {
         ctx.status = 401;
         ctx.body = { error: "Authentication failed" };
@@ -104,7 +104,7 @@ const expressMiddleware =
   async (
     req: ExpressRequestWithUser,
     res: ExpressResponse,
-    next: ExpressNext
+    next?: ExpressNext
   ) => {
     try {
       // First check for token in cookie
@@ -149,7 +149,7 @@ const expressMiddleware =
           });
         }
 
-        next();
+        next?.();
       } catch (tokenError) {
         res.status(401).json({ error: "Authentication failed" });
       }
