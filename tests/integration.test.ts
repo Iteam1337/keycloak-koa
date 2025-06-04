@@ -162,11 +162,11 @@ describe("Integration Tests", () => {
 
       // Check that cookies are set
       expect(response.headers["set-cookie"]).toBeDefined();
-      // expect(
-      //   response.headers["set-cookie"].some((cookie) =>
-      //     cookie.includes("auth_token")
-      //   )
-      // ).toBe(true);
+      expect(
+        Object.values(response.headers["set-cookie"]).some((cookie) =>
+          cookie.includes("auth_token")
+        )
+      ).toBe(true);
     });
 
     it("should reject invalid code", async () => {
@@ -189,16 +189,16 @@ describe("Integration Tests", () => {
 
       // Check that cookies are cleared
       expect(response.headers["set-cookie"]).toBeDefined();
-      // expect(
-      //   response.headers["set-cookie"].some((cookie) =>
-      //     cookie.includes("auth_token=;")
-      //   )
-      // ).toBe(true);
-      // expect(
-      //   response.headers["set-cookie"].some((cookie) =>
-      //     cookie.includes("refresh_token=;")
-      //   )
-      // ).toBe(true);
+      expect(
+        Object.values(response.headers["set-cookie"]).some((cookie) =>
+          cookie.includes("auth_token=;")
+        )
+      ).toBe(true);
+      expect(
+        Object.values(response.headers["set-cookie"]).some((cookie) =>
+          cookie.includes("refresh_token=;")
+        )
+      ).toBe(true);
     });
   });
 });
