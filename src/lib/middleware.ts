@@ -49,7 +49,7 @@ export const extractJwtToken =
           });
         }
 
-        next();
+        await next();
       } catch (tokenError) {
         console.error("Token verification error:", tokenError);
         ctx.status = 401;
