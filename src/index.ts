@@ -1,8 +1,12 @@
-import { TokenService } from './lib/tokenService';
-import { JwksService } from './lib/jwksService';
-import { extractJwtToken } from './lib/middleware';
-import { getAuthUrl, getLogoutUrl, generateRandomState } from './lib/urlHelpers';
-import { KeycloakOptions, KeycloakInstance } from './types';
+import { TokenService } from "./lib/tokenService";
+import { JwksService } from "./lib/jwksService";
+import { extractJwtToken } from "./lib/middleware";
+import {
+  getAuthUrl,
+  getLogoutUrl,
+  generateRandomState,
+} from "./lib/urlHelpers";
+import { KeycloakOptions, KeycloakInstance } from "./types";
 
 /**
  * Initialize Keycloak integration for Express/Koa
@@ -11,17 +15,17 @@ import { KeycloakOptions, KeycloakInstance } from './types';
  */
 function initKeycloak(options: KeycloakOptions): KeycloakInstance {
   if (!options) {
-    throw new Error('Options are required for Keycloak initialization');
+    throw new Error("Options are required for Keycloak initialization");
   }
 
   const { keycloakUrl, clientId, clientSecret } = options;
 
   if (!keycloakUrl) {
-    throw new Error('keycloakUrl is required');
+    throw new Error("keycloakUrl is required");
   }
 
   if (!clientId) {
-    throw new Error('clientId is required');
+    throw new Error("clientId is required");
   }
 
   // Initialize services
@@ -43,10 +47,16 @@ function initKeycloak(options: KeycloakOptions): KeycloakInstance {
     },
 
     // Helper methods
-    handleTokenExchange: async (code, redirectUri, res) => {
-      const tokenData = await tokenService.exchangeCodeForTokens(code, redirectUri);
-      tokenService.setCookies(res, tokenData);
-      const user = await tokenService.extractUserFromToken(tokenData.access_token, jwksService);
+    handleTokenExchange: async (code, redirectUri, ctx) => {
+      const tokenData = await tokenService.exchangeCodeForTokens(
+        code,
+        redirectUri
+      );
+      tokenService.setCookies(ctx, tokenData);
+      const user = await tokenService.extractUserFromToken(
+        tokenData.access_token,
+        jwksService
+      );
       return { tokenData, user };
     },
 
@@ -55,20 +65,22 @@ function initKeycloak(options: KeycloakOptions): KeycloakInstance {
     },
 
     // URL helper methods
-    getAuthUrl: (redirectUri, options = {}) => getAuthUrl({
-      keycloakUrl,
-      clientId,
-      redirectUri,
-      ...options
-    }),
+    getAuthUrl: (redirectUri, options = {}) =>
+      getAuthUrl({
+        keycloakUrl,
+        clientId,
+        redirectUri,
+        ...options,
+      }),
 
-    getLogoutUrl: (redirectUri, options = {}) => getLogoutUrl({
-      keycloakUrl,
-      redirectUri,
-      ...options
-    }),
+    getLogoutUrl: (redirectUri, options = {}) =>
+      getLogoutUrl({
+        keycloakUrl,
+        redirectUri,
+        ...options,
+      }),
 
-    generateRandomState
+    generateRandomState,
   };
 }
 
