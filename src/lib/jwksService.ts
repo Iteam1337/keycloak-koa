@@ -1,5 +1,4 @@
-import axios from 'axios';
-import * as jose from 'jose';
+import * as jose from "jose";
 
 export class JwksService {
   private keycloakUrl: string;
@@ -25,16 +24,13 @@ export class JwksService {
       now - this.lastFetched > this.cacheExpiryMs
     ) {
       try {
-        const response = await axios.get(this.jwksUri);
-        const jwks = response.data;
-
         // Create a JWKS from the response
-        this.keyStore = await jose.createRemoteJWKSet(new URL(this.jwksUri));
+        this.keyStore = jose.createRemoteJWKSet(new URL(this.jwksUri));
         this.lastFetched = now;
       } catch (error: any) {
         // Only log errors in non-test environments
-        if (process.env.NODE_ENV !== 'test') {
-          console.error('Error fetching JWKS:', error.message);
+        if (process.env.NODE_ENV !== "test") {
+          console.error("Error fetching JWKS:", error.message);
         }
         throw error;
       }
@@ -50,14 +46,14 @@ export class JwksService {
       // Verify the token
       const { payload } = await jose.jwtVerify(token, jwks, {
         issuer: this.keycloakUrl,
-        audience: 'account', // This might need to be adjusted based on your Keycloak configuration
+        audience: "account", // This might need to be adjusted based on your Keycloak configuration
       });
 
       return payload;
     } catch (error: any) {
       // Only log errors in non-test environments
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Token verification failed:', error.message);
+      if (process.env.NODE_ENV !== "test") {
+        console.error("Token verification failed:", error.message);
       }
       throw error;
     }
