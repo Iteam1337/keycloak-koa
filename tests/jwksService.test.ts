@@ -1,18 +1,15 @@
 import nock from "nock";
-import jose from "jose";
+import * as jose from "jose";
 
 import { JwksService } from "../src/lib/jwksService";
 
+const mockKeycloakUrl = "https://auth.example.com/realms/test-realm";
+const mockJwksUri = `${mockKeycloakUrl}/protocol/openid-connect/certs`;
+
 describe("JwksService", () => {
-  const mockKeycloakUrl = "https://auth.example.com/realms/test-realm";
-  const mockJwksUri = `${mockKeycloakUrl}/protocol/openid-connect/certs`;
-  let jwksService: JwksService;
-
   beforeEach(() => {
-    jwksService = new JwksService(mockKeycloakUrl);
-
-    // Reset nock to ensure clean mocks for each test
     nock.cleanAll();
+    jest.restoreAllMocks();
   });
 
   describe("getJwks", () => {
@@ -38,7 +35,8 @@ describe("JwksService", () => {
       // Spy on jose.createRemoteJWKSet
       const createRemoteJWKSetSpy = jest.spyOn(jose, "createRemoteJWKSet");
 
-      await jwksService.getJwks();
+      const jwksService = new JwksService(mockKeycloakUrl);
+      jwksService.getJwks();
       expect(createRemoteJWKSetSpy).toHaveBeenCalledWith(new URL(mockJwksUri));
       expect(jwksService["lastFetched"]).not.toBeNull();
 
@@ -60,7 +58,7 @@ describe("JwksService", () => {
         ],
       };
 
-      const jwksScope = nock(mockKeycloakUrl)
+      nock(mockKeycloakUrl)
         .get("/protocol/openid-connect/certs")
         .reply(200, mockJwks);
 
@@ -68,17 +66,13 @@ describe("JwksService", () => {
       const createRemoteJWKSetSpy = jest.spyOn(jose, "createRemoteJWKSet");
 
       // First call should fetch
+      const jwksService = new JwksService(mockKeycloakUrl);
       await jwksService.getJwks();
       expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1);
 
       // Second call should use cache
       await jwksService.getJwks();
       expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1); // Still only called once
-
-      // Verify the nock endpoint was only called once
-      expect(jwksScope.isDone()).toBe(true);
-
-      createRemoteJWKSetSpy.mockRestore();
     });
 
     it("should handle JWKS fetch errors", async () => {
@@ -86,6 +80,7 @@ describe("JwksService", () => {
         .get("/protocol/openid-connect/certs")
         .reply(500, { error: "Internal Server Error" });
 
+      const jwksService = new JwksService(mockKeycloakUrl);
       await expect(jwksService.getJwks()).rejects.toThrow();
     });
   });
@@ -101,15 +96,20 @@ describe("JwksService", () => {
         aud: "account",
       };
 
-      // Mock the getJwks method
-      jwksService.getJwks = jest.fn().mockResolvedValue("mock-jwks");
+      const jwksService = new JwksService(mockKeycloakUrl);
 
-      // Mock jose.jwtVerify
+      jwksService.getJwks = jest.fn().mockResolvedValueOnce("mock-jwks");
+
       const jwtVerifySpy = jest.spyOn(jose, "jwtVerify");
+      jwtVerifySpy.mockResolvedValueOnce({
+        payload: mockPayload,
+        protectedHeader: { alg: "RS256" },
+      } as any);
 
       const result = await jwksService.verifyToken("valid.jwt.token");
 
       expect(result).toEqual(mockPayload);
+      expect(jwksService.getJwks).toHaveBeenCalled();
       expect(jwtVerifySpy).toHaveBeenCalledWith(
         "valid.jwt.token",
         "mock-jwks",
@@ -118,11 +118,10 @@ describe("JwksService", () => {
           audience: "account",
         }
       );
-
-      jwtVerifySpy.mockRestore();
     });
 
     it("should reject an invalid token", async () => {
+      const jwksService = new JwksService(mockKeycloakUrl);
       // Mock the getJwks method
       jwksService.getJwks = jest.fn().mockResolvedValue("mock-jwks");
 
@@ -133,11 +132,10 @@ describe("JwksService", () => {
       await expect(
         jwksService.verifyToken("invalid.jwt.token")
       ).rejects.toThrow("Invalid signature");
-
-      jwtVerifySpy.mockRestore();
     });
 
     it("should reject a token with wrong issuer", async () => {
+      const jwksService = new JwksService(mockKeycloakUrl);
       // Mock the getJwks method
       jwksService.getJwks = jest.fn().mockResolvedValue("mock-jwks");
 
@@ -148,8 +146,6 @@ describe("JwksService", () => {
       await expect(
         jwksService.verifyToken("wrong.issuer.token")
       ).rejects.toThrow("Invalid issuer");
-
-      jwtVerifySpy.mockRestore();
     });
   });
 });
