@@ -15,7 +15,7 @@ export class JwksService {
     this.cacheExpiryMs = 3600000; // 1 hour
   }
 
-  async getJwks(): Promise<any> {
+  getJwks() {
     // Check if we need to refresh the JWKS
     const now = Date.now();
     if (
