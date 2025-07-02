@@ -8,6 +8,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "test": "jest --silent",
+    "test:watch": "jest --watch",
     "clean": "rimraf dist"
   },
   "keywords": [
