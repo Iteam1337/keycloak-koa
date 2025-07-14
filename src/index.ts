@@ -1,12 +1,8 @@
-import { TokenService } from "./lib/tokenService";
-import { JwksService } from "./lib/jwksService";
-import { extractJwtToken } from "./lib/middleware";
-import {
-  getAuthUrl,
-  getLogoutUrl,
-  generateRandomState,
-} from "./lib/urlHelpers";
-import { KeycloakOptions, KeycloakInstance } from "./types";
+import { TokenService } from './lib/tokenService'
+import { JwksService } from './lib/jwksService'
+import { extractJwtToken } from './lib/middleware'
+import { getAuthUrl, getLogoutUrl, generateRandomState } from './lib/urlHelpers'
+import { KeycloakOptions, KeycloakInstance } from './types'
 
 /**
  * Initialize Keycloak integration for Express/Koa
@@ -15,22 +11,22 @@ import { KeycloakOptions, KeycloakInstance } from "./types";
  */
 function initKeycloak(options: KeycloakOptions): KeycloakInstance {
   if (!options) {
-    throw new Error("Options are required for Keycloak initialization");
+    throw new Error('Options are required for Keycloak initialization')
   }
 
-  const { keycloakUrl, clientId, clientSecret } = options;
+  const { keycloakUrl, clientId, clientSecret } = options
 
   if (!keycloakUrl) {
-    throw new Error("keycloakUrl is required");
+    throw new Error('keycloakUrl is required')
   }
 
   if (!clientId) {
-    throw new Error("clientId is required");
+    throw new Error('clientId is required')
   }
 
   // Initialize services
-  const tokenService = new TokenService(keycloakUrl, clientId, clientSecret);
-  const jwksService = new JwksService(keycloakUrl);
+  const tokenService = new TokenService(keycloakUrl, clientId, clientSecret)
+  const jwksService = new JwksService(keycloakUrl)
 
   return {
     // Services
@@ -51,17 +47,17 @@ function initKeycloak(options: KeycloakOptions): KeycloakInstance {
       const tokenData = await tokenService.exchangeCodeForTokens(
         code,
         redirectUri
-      );
-      tokenService.setCookies(ctx, tokenData);
+      )
+      tokenService.setCookies(ctx, tokenData)
       const user = await tokenService.extractUserFromToken(
         tokenData.access_token,
         jwksService
-      );
-      return { tokenData, user };
+      )
+      return { tokenData, user }
     },
 
     logout: (res) => {
-      tokenService.clearAuthCookies(res);
+      tokenService.clearAuthCookies(res)
     },
 
     // URL helper methods
@@ -81,9 +77,9 @@ function initKeycloak(options: KeycloakOptions): KeycloakInstance {
       }),
 
     generateRandomState,
-  };
+  }
 }
 
 // Export the main function as default and URL helpers as named exports
-export default initKeycloak;
-export { getAuthUrl, getLogoutUrl, generateRandomState };
+export default initKeycloak
+export { getAuthUrl, getLogoutUrl, generateRandomState }

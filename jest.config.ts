@@ -1,13 +1,13 @@
-import type { Config } from "jest";
+import type { Config } from 'jest'
 
 const config: Config = {
-  preset: "ts-jest",
-  testEnvironment: "node",
-  testMatch: ["**/tests/**/*.test.{js,ts}"],
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  testMatch: ['**/tests/**/*.test.{js,ts}'],
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
+    '^.+\\.tsx?$': 'ts-jest',
   },
-  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
-};
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+}
 
-export default config;
+export default config
