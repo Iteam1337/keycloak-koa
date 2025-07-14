@@ -1,18 +1,18 @@
-const JwksService = require('../lib/jwksService');
-const nock = require('nock');
-const jose = require('jose');
+const JwksService = require('../lib/jwksService')
+const nock = require('nock')
+const jose = require('jose')
 
 describe('JwksService', () => {
-  const mockKeycloakUrl = 'https://auth.example.com/realms/test-realm';
-  const mockJwksUri = `${mockKeycloakUrl}/protocol/openid-connect/certs`;
-  let jwksService;
+  const mockKeycloakUrl = 'https://auth.example.com/realms/test-realm'
+  const mockJwksUri = `${mockKeycloakUrl}/protocol/openid-connect/certs`
+  let jwksService
 
   beforeEach(() => {
-    jwksService = new JwksService(mockKeycloakUrl);
-    
+    jwksService = new JwksService(mockKeycloakUrl)
+
     // Reset nock to ensure clean mocks for each test
-    nock.cleanAll();
-  });
+    nock.cleanAll()
+  })
 
   describe('getJwks', () => {
     it('should fetch JWKS from Keycloak server', async () => {
@@ -28,23 +28,25 @@ describe('JwksService', () => {
             e: 'AQAB',
           },
         ],
-      };
+      }
 
       nock(mockKeycloakUrl)
         .get('/protocol/openid-connect/certs')
-        .reply(200, mockJwks);
+        .reply(200, mockJwks)
 
       // Spy on jose.createRemoteJWKSet
-      const createRemoteJWKSetSpy = jest.spyOn(jose, 'createRemoteJWKSet');
-      createRemoteJWKSetSpy.mockResolvedValue(() => Promise.resolve({ key: 'mock-key' }));
+      const createRemoteJWKSetSpy = jest.spyOn(jose, 'createRemoteJWKSet')
+      createRemoteJWKSetSpy.mockResolvedValue(() =>
+        Promise.resolve({ key: 'mock-key' })
+      )
 
-      await jwksService.getJwks();
+      await jwksService.getJwks()
 
-      expect(createRemoteJWKSetSpy).toHaveBeenCalledWith(new URL(mockJwksUri));
-      expect(jwksService.lastFetched).not.toBeNull();
+      expect(createRemoteJWKSetSpy).toHaveBeenCalledWith(new URL(mockJwksUri))
+      expect(jwksService.lastFetched).not.toBeNull()
 
-      createRemoteJWKSetSpy.mockRestore();
-    });
+      createRemoteJWKSetSpy.mockRestore()
+    })
 
     it('should cache JWKS and not fetch again within cache period', async () => {
       // Mock JWKS response
@@ -59,38 +61,40 @@ describe('JwksService', () => {
             e: 'AQAB',
           },
         ],
-      };
+      }
 
       const jwksScope = nock(mockKeycloakUrl)
         .get('/protocol/openid-connect/certs')
-        .reply(200, mockJwks);
+        .reply(200, mockJwks)
 
       // Spy on jose.createRemoteJWKSet
-      const createRemoteJWKSetSpy = jest.spyOn(jose, 'createRemoteJWKSet');
-      createRemoteJWKSetSpy.mockResolvedValue(() => Promise.resolve({ key: 'mock-key' }));
+      const createRemoteJWKSetSpy = jest.spyOn(jose, 'createRemoteJWKSet')
+      createRemoteJWKSetSpy.mockResolvedValue(() =>
+        Promise.resolve({ key: 'mock-key' })
+      )
 
       // First call should fetch
-      await jwksService.getJwks();
-      expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1);
-      
-      // Second call should use cache
-      await jwksService.getJwks();
-      expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1); // Still only called once
-      
-      // Verify the nock endpoint was only called once
-      expect(jwksScope.isDone()).toBe(true);
+      await jwksService.getJwks()
+      expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1)
 
-      createRemoteJWKSetSpy.mockRestore();
-    });
+      // Second call should use cache
+      await jwksService.getJwks()
+      expect(createRemoteJWKSetSpy).toHaveBeenCalledTimes(1) // Still only called once
+
+      // Verify the nock endpoint was only called once
+      expect(jwksScope.isDone()).toBe(true)
+
+      createRemoteJWKSetSpy.mockRestore()
+    })
 
     it('should handle JWKS fetch errors', async () => {
       nock(mockKeycloakUrl)
         .get('/protocol/openid-connect/certs')
-        .reply(500, { error: 'Internal Server Error' });
+        .reply(500, { error: 'Internal Server Error' })
 
-      await expect(jwksService.getJwks()).rejects.toThrow();
-    });
-  });
+      await expect(jwksService.getJwks()).rejects.toThrow()
+    })
+  })
 
   describe('verifyToken', () => {
     it('should verify a valid token', async () => {
@@ -101,50 +105,58 @@ describe('JwksService', () => {
         preferred_username: 'testuser',
         iss: mockKeycloakUrl,
         aud: 'account',
-      };
+      }
 
       // Mock the getJwks method
-      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks');
-      
+      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks')
+
       // Mock jose.jwtVerify
-      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify');
-      jwtVerifySpy.mockResolvedValue({ payload: mockPayload });
+      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify')
+      jwtVerifySpy.mockResolvedValue({ payload: mockPayload })
 
-      const result = await jwksService.verifyToken('valid.jwt.token');
-      
-      expect(result).toEqual(mockPayload);
-      expect(jwtVerifySpy).toHaveBeenCalledWith('valid.jwt.token', 'mock-jwks', {
-        issuer: mockKeycloakUrl,
-        audience: 'account',
-      });
+      const result = await jwksService.verifyToken('valid.jwt.token')
 
-      jwtVerifySpy.mockRestore();
-    });
+      expect(result).toEqual(mockPayload)
+      expect(jwtVerifySpy).toHaveBeenCalledWith(
+        'valid.jwt.token',
+        'mock-jwks',
+        {
+          issuer: mockKeycloakUrl,
+          audience: 'account',
+        }
+      )
+
+      jwtVerifySpy.mockRestore()
+    })
 
     it('should reject an invalid token', async () => {
       // Mock the getJwks method
-      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks');
-      
-      // Mock jose.jwtVerify to throw an error
-      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify');
-      jwtVerifySpy.mockRejectedValue(new Error('Invalid signature'));
+      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks')
 
-      await expect(jwksService.verifyToken('invalid.jwt.token')).rejects.toThrow('Invalid signature');
-      
-      jwtVerifySpy.mockRestore();
-    });
+      // Mock jose.jwtVerify to throw an error
+      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify')
+      jwtVerifySpy.mockRejectedValue(new Error('Invalid signature'))
+
+      await expect(
+        jwksService.verifyToken('invalid.jwt.token')
+      ).rejects.toThrow('Invalid signature')
+
+      jwtVerifySpy.mockRestore()
+    })
 
     it('should reject a token with wrong issuer', async () => {
       // Mock the getJwks method
-      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks');
-      
-      // Mock jose.jwtVerify to throw an error
-      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify');
-      jwtVerifySpy.mockRejectedValue(new Error('Invalid issuer'));
+      jwksService.getJwks = jest.fn().mockResolvedValue('mock-jwks')
 
-      await expect(jwksService.verifyToken('wrong.issuer.token')).rejects.toThrow('Invalid issuer');
-      
-      jwtVerifySpy.mockRestore();
-    });
-  });
-});
+      // Mock jose.jwtVerify to throw an error
+      const jwtVerifySpy = jest.spyOn(jose, 'jwtVerify')
+      jwtVerifySpy.mockRejectedValue(new Error('Invalid issuer'))
+
+      await expect(
+        jwksService.verifyToken('wrong.issuer.token')
+      ).rejects.toThrow('Invalid issuer')
+
+      jwtVerifySpy.mockRestore()
+    })
+  })
+})

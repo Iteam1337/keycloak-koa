@@ -11,30 +11,30 @@ npm install keycloak-koa
 ## Quick Start
 
 ```typescript
-import Koa from "koa";
-import Router from "koa-router";
-import koaCookie from "koa-cookie";
-import keycloak from "keycloak-koa";
+import Koa from 'koa'
+import Router from 'koa-router'
+import koaCookie from 'koa-cookie'
+import keycloak from 'keycloak-koa'
 
-const app = new Koa();
-app.use(koaCookie());
+const app = new Koa()
+app.use(koaCookie())
 
-const router = new Router();
+const router = new Router()
 
 // Initialize Keycloak
 const auth = keycloak({
-  keycloakUrl: "https://auth.example.com/realms/my-realm",
-  clientId: "my-client",
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
-});
+})
 
 // Protect routes
-router.get("/api/profile", auth.middleware.extractJwtToken, async (ctx) => {
-  ctx.body = { user: ctx.state.user };
-});
+router.get('/api/profile', auth.middleware.extractJwtToken, async (ctx) => {
+  ctx.body = { user: ctx.state.user }
+})
 
-app.use(router.routes());
-app.listen(3000);
+app.use(router.routes())
+app.listen(3000)
 ```
 
 ## Complete Example
@@ -42,94 +42,94 @@ app.listen(3000);
 Here's a complete example showing all the endpoints you'll need:
 
 ```typescript
-import Koa from "koa";
-import Router from "koa-router";
-import koaBody from "koa-body";
-import koaCookie from "koa-cookie";
-import session from "koa-session";
-import keycloak from "keycloak-koa";
+import Koa from 'koa'
+import Router from 'koa-router'
+import koaBody from 'koa-body'
+import koaCookie from 'koa-cookie'
+import session from 'koa-session'
+import keycloak from 'keycloak-koa'
 
-const app = new Koa();
-app.keys = ["your-secret-key"];
+const app = new Koa()
+app.keys = ['your-secret-key']
 
-app.use(koaBody());
-app.use(koaCookie());
-app.use(session(app));
+app.use(koaBody())
+app.use(koaCookie())
+app.use(session(app))
 
-const router = new Router();
+const router = new Router()
 
 // 1. Initialize Keycloak
 const auth = keycloak({
-  keycloakUrl: "https://auth.example.com/realms/my-realm",
-  clientId: "my-client",
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
-});
+})
 
 // 2. Login endpoint - redirect users to Keycloak
-router.get("/login", async (ctx) => {
-  const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`;
+router.get('/login', async (ctx) => {
+  const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`
 
   // Generate a random state for CSRF protection
-  const state = auth.generateRandomState();
-  ctx.session.authState = state; // Store in session
+  const state = auth.generateRandomState()
+  ctx.session.authState = state // Store in session
 
   // Use the helper to generate the auth URL
-  const authUrl = auth.getAuthUrl(redirectUri, { state });
-  ctx.redirect(authUrl);
-});
+  const authUrl = auth.getAuthUrl(redirectUri, { state })
+  ctx.redirect(authUrl)
+})
 
 // 3. Callback endpoint - handle the code from Keycloak
-router.get("/auth/callback", async (ctx) => {
+router.get('/auth/callback', async (ctx) => {
   try {
-    const { code, state } = ctx.query;
+    const { code, state } = ctx.query
 
     // Verify state parameter to prevent CSRF attacks
     if (state !== ctx.session.authState) {
-      return ctx.redirect("/login?error=invalid_state");
+      return ctx.redirect('/login?error=invalid_state')
     }
 
-    const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`;
+    const redirectUri = `${ctx.protocol}://${ctx.host}/auth/callback`
 
     // Exchange code for tokens and set cookies
     const { user } = await auth.handleTokenExchange(
       code as string,
       redirectUri,
       ctx
-    );
+    )
 
     // Redirect to the application
-    ctx.redirect("/dashboard");
+    ctx.redirect('/dashboard')
   } catch (error) {
-    console.error("Authentication error:", error);
-    ctx.redirect("/login?error=auth_failed");
+    console.error('Authentication error:', error)
+    ctx.redirect('/login?error=auth_failed')
   }
-});
+})
 
 // 4. Protected API routes
-router.get("/api/profile", auth.middleware.extractJwtToken, async (ctx) => {
+router.get('/api/profile', auth.middleware.extractJwtToken, async (ctx) => {
   ctx.body = {
     user: ctx.state.user,
-    message: "This is a protected endpoint",
-  };
-});
+    message: 'This is a protected endpoint',
+  }
+})
 
 // 5. Logout endpoint
-router.get("/logout", async (ctx) => {
-  auth.logout(ctx);
+router.get('/logout', async (ctx) => {
+  auth.logout(ctx)
 
   // Use the helper to generate the logout URL
-  const redirectUri = `${ctx.protocol}://${ctx.host}`;
-  const logoutUrl = auth.getLogoutUrl(redirectUri);
+  const redirectUri = `${ctx.protocol}://${ctx.host}`
+  const logoutUrl = auth.getLogoutUrl(redirectUri)
 
-  ctx.redirect(logoutUrl);
-});
+  ctx.redirect(logoutUrl)
+})
 
-app.use(router.routes());
-app.use(router.allowedMethods());
+app.use(router.routes())
+app.use(router.allowedMethods())
 
 app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
-});
+  console.log('Server running on http://localhost:3000')
+})
 ```
 
 ## API Reference
@@ -162,16 +162,16 @@ These functions are also available directly from the module:
 Generates a Keycloak authorization URL.
 
 ```javascript
-const { getAuthUrl } = require("keycloak-koa");
+const { getAuthUrl } = require('keycloak-koa')
 
 const authUrl = getAuthUrl({
-  keycloakUrl: "https://auth.example.com/realms/my-realm",
-  clientId: "my-client",
-  redirectUri: "https://myapp.com/callback",
-  scope: "openid profile email",
-  state: "random-state-string",
-  prompt: "login", // Force login even if already authenticated
-});
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  clientId: 'my-client',
+  redirectUri: 'https://myapp.com/callback',
+  scope: 'openid profile email',
+  state: 'random-state-string',
+  prompt: 'login', // Force login even if already authenticated
+})
 ```
 
 #### getLogoutUrl(options)
@@ -179,13 +179,13 @@ const authUrl = getAuthUrl({
 Generates a Keycloak logout URL.
 
 ```javascript
-const { getLogoutUrl } = require("keycloak-koa");
+const { getLogoutUrl } = require('keycloak-koa')
 
 const logoutUrl = getLogoutUrl({
-  keycloakUrl: "https://auth.example.com/realms/my-realm",
-  redirectUri: "https://myapp.com/logged-out",
-  idTokenHint: "optional-id-token",
-});
+  keycloakUrl: 'https://auth.example.com/realms/my-realm',
+  redirectUri: 'https://myapp.com/logged-out',
+  idTokenHint: 'optional-id-token',
+})
 ```
 
 #### generateRandomState(length)
@@ -193,9 +193,9 @@ const logoutUrl = getLogoutUrl({
 Generates a random string for CSRF protection.
 
 ```javascript
-const { generateRandomState } = require("keycloak-koa");
+const { generateRandomState } = require('keycloak-koa')
 
-const state = generateRandomState(32); // Default length is 32
+const state = generateRandomState(32) // Default length is 32
 ```
 
 ## Security Features
